@@ -35,127 +35,41 @@ void gotoxy(int x, int y)//改变光标位置
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
 }
 
-int WallAroundIs(int r, int c, int distance, int right, int left, int down, int up)
+int WallAroundIs(int r, int c, int right, int left, int down, int up)
 {
-	if(r-distance >= 0 && r+distance <= 2*rowOfMaze
-		&& c-distance >= 0 && c+distance <= 2*columnOfMaze)
+	if(c+1 <= 2*columnOfMaze)
 	{
-		if(maze[r][c+distance] == right && maze[r][c-distance] == left
-			&& maze[r+distance][c] == down && maze[r-distance][c] == up)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
+		if(maze[r][c+1] != right) return 0;
 	}
-	//边墙
-	if(r-distance >= 0 && r+distance <= 2*rowOfMaze
-		&& c-distance >= 0 && c+distance > 2*columnOfMaze)
+	else
 	{
-		if(0 == right && maze[r][c-distance] == left
-			&& maze[r+distance][c] == down && maze[r-distance][c] == up)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
+		if(right != 0) return 0;
 	}
-	if(r-distance >= 0 && r+distance <= 2*rowOfMaze
-		&& c-distance < 0 && c+distance <= 2*columnOfMaze)
+	if(c > 0)
 	{
-		if(maze[r][c+distance] == right && 0 == left
-			&& maze[r+distance][c] == down && maze[r-distance][c] == up)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
+		if(maze[r][c-1] != left) return 0;
 	}
-	if(r-distance >= 0 && r+distance > 2*rowOfMaze
-		&& c-distance >= 0 && c+distance <= 2*columnOfMaze)
+	else
 	{
-		if(maze[r][c+distance] == right && maze[r][c-distance] == left
-			&& 0 == down && maze[r-distance][c] == up)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
+		if(left != 0) return 0;
 	}
-	if(r-distance < 0 && r+distance <= 2*rowOfMaze
-		&& c-distance >= 0 && c+distance <= 2*columnOfMaze)
+	if(r+1 <= 2*rowOfMaze)
 	{
-		if(maze[r][c+distance] == right && maze[r][c-distance] == left
-			&& maze[r+distance][c] == down && 0 == up)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
+		if(maze[r+1][c] != down) return 0;
 	}
-	//角墙
-	if(r-distance >= 0 && r+distance > 2*rowOfMaze
-		&& c-distance >= 0 && c+distance > 2*columnOfMaze)
+	else
 	{
-		if(0 == right && maze[r][c-distance] == left
-			&& 0 == down && maze[r-distance][c] == up)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
+		if(down != 0) return 0;
 	}
-	if(r-distance < 0 && r+distance <= 2*rowOfMaze
-		&& c-distance >= 0 && c+distance > 2*columnOfMaze)
+	if(r > 0)
 	{
-		if(0 == right && maze[r][c-distance] == left
-			&& maze[r+distance][c] == down && 0 == up)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
+		if(maze[r-1][c] != up) return 0;
 	}
-	if(r-distance >= 0 && r+distance > 2*rowOfMaze
-		&& c-distance < 0 && c+distance <= 2*columnOfMaze)
+	else
 	{
-		if(maze[r][c+distance] == right && 0 == left
-			&& 0 == down && maze[r-distance][c] == up)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
+		if(up != 0) return 0;
 	}
-	if(r-distance < 0 && r+distance <= 2*rowOfMaze
-		&& c-distance < 0 && c+distance <= 2*columnOfMaze)
-	{
-		if(maze[r][c+distance] == right && 0 == left
-			&& maze[r+distance][c] == down && 0 == up)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
-	}
+	return 1;
 }
 
 void ShowMazeLine(int r, int c)
@@ -168,58 +82,58 @@ void ShowMazeLine(int r, int c)
 	else if(maze[r][c] == 1)
 	{
 		//单连-
-		/*if(WallAroundIs(r, c, 1, 0, 1, 0, 0))
+		/*if(WallAroundIs(r, c, 0, 1, 0, 0))
 		{
 			printf("- ");
 		}
-		else if(WallAroundIs(r, c, 1, 1, 0, 0, 0))
+		else if(WallAroundIs(r, c, 1, 0, 0, 0))
 		{
 			printf(" -");
 		}
 		//双连━┃┏┛┗┓
-		else */if(WallAroundIs(r, c, 1, 0, 0, 1, 1))
+		else */if(WallAroundIs(r, c, 0, 0, 1, 1))
 		{
 			printf("│ ");
 		}
-		else if(WallAroundIs(r, c, 1, 0, 1, 0, 1))
+		else if(WallAroundIs(r, c, 0, 1, 0, 1))
 		{
 			printf("┘ ");
 		}
-		else if(WallAroundIs(r, c, 1, 0, 1, 1, 0))
+		else if(WallAroundIs(r, c, 0, 1, 1, 0))
 		{
 			printf("┐ ");
 		}
-		else if(WallAroundIs(r, c, 1, 1, 0, 0, 1))
+		else if(WallAroundIs(r, c, 1, 0, 0, 1))
 		{
 			printf("└ ");
 		}
-		else if(WallAroundIs(r, c, 1, 1, 0, 1, 0))
+		else if(WallAroundIs(r, c, 1, 0, 1, 0))
 		{
 			printf("┌ ");
 		}
-		else if(WallAroundIs(r, c, 1, 1, 1, 0, 0))
+		else if(WallAroundIs(r, c, 1, 1, 0, 0))
 		{
 			printf("─ ");
 		}
 		//三连┫┻┣┳
-		else if(WallAroundIs(r, c, 1, 0, 1, 1, 1))
+		else if(WallAroundIs(r, c, 0, 1, 1, 1))
 		{
 			printf("┤ ");
 		}
-		else if(WallAroundIs(r, c, 1, 1, 0, 1, 1))
+		else if(WallAroundIs(r, c, 1, 0, 1, 1))
 		{
 			printf("├ ");
 		}
-		else if(WallAroundIs(r, c, 1, 1, 1, 0, 1))
+		else if(WallAroundIs(r, c, 1, 1, 0, 1))
 		{
 			printf("┴ ");
 		}
-		else if(WallAroundIs(r, c, 1, 1, 1, 1, 0))
+		else if(WallAroundIs(r, c, 1, 1, 1, 0))
 		{
 			printf("┬ ");
 		}
 		//四连╋
-		else if(WallAroundIs(r, c, 1, 1, 1, 1, 1))
+		else if(WallAroundIs(r, c, 1, 1, 1, 1))
 		{
 			printf("┼ ");
 		}
@@ -615,9 +529,11 @@ int main()
 		if(showMode == 3) system("color f0");
 		else system("color 07");
 		system("cls");
-		printf("*******************************\n"
-			   "**新游戏(1)**设置(2)**退出(3)**\n"
-			   "*******************************\n");//宽31
+		printf("*******************************\n"//宽31
+			   "(1)新游戏\n"
+			   "(2)设置\n"
+			   "(3)退出\n"
+			   "*******************************\n");
 		if(lastMap == 1)
 		{
 			choice = 1;
@@ -722,88 +638,106 @@ int main()
 		else if(choice == 2)
 		{
 			printf("*******************************\n");
-			if(showMode == 1)
-			{
-				printf("(0)小规模：   5*18\n"
-					   "(1)中规模：   8*30\n"
-					   "(2)大规模：  11*42\n"
-					   "(3)超大规模：14*55\n");
-				//最大规模：24*89
-			}
-			else
-			{
-				printf("(0)小规模：   9*9\n"
-					   "(1)中规模：  15*15\n"
-					   "(2)大规模：  21*21\n"
-					   "(3)最大规模：24*44\n");
-			}
-			printf("(4)自定义*********\n"
-				   "*******************************\n");
-			printf("当前迷宫行列数:%d*%d\n>", rowOfMaze, columnOfMaze);
+			printf("(1)设置迷宫行列数 当前:%d*%d\n", rowOfMaze, columnOfMaze);
+			printf("(2)设置生成模式 当前:%s度优先\n", summonMode == 1 ? "深" : "广");
+			printf("(3)退出\n");
+			printf("*******************************\n");
+			printf(">");
 			scanf("%d", &choice);
-			if(choice == 0)
+			if(choice == 1)
 			{
+				printf("*******************************\n");
 				if(showMode == 1)
 				{
-					rowOfMaze = 5;
-					columnOfMaze = 18;
+					printf("(0)小规模：   5*18\n"
+						   "(1)中规模：   8*30\n"
+						   "(2)大规模：  11*42\n"
+						   "(3)超大规模：14*55\n");
+					//最大规模：24*89
 				}
 				else
 				{
-					rowOfMaze = 9;
-					columnOfMaze = 9;
+					printf("(0)小规模：   9*9\n"
+						   "(1)中规模：  15*15\n"
+						   "(2)大规模：  21*21\n"
+						   "(3)最大规模：24*44\n");
 				}
-			}
-			else if(choice == 1)
-			{
-				if(showMode == 1)
+				printf("(4)自定义*********\n"
+					   "*******************************\n");
+				printf("当前迷宫行列数:%d*%d\n>", rowOfMaze, columnOfMaze);
+				scanf("%d", &choice);
+				if(choice == 0)
 				{
-					rowOfMaze = 8;
-					columnOfMaze = 30;
+					if(showMode == 1)
+					{
+						rowOfMaze = 5;
+						columnOfMaze = 18;
+					}
+					else
+					{
+						rowOfMaze = 9;
+						columnOfMaze = 9;
+					}
+				}
+				else if(choice == 1)
+				{
+					if(showMode == 1)
+					{
+						rowOfMaze = 8;
+						columnOfMaze = 30;
+					}
+					else
+					{
+						rowOfMaze = 15;
+						columnOfMaze = 15;
+					}
+				}
+				else if(choice == 2)
+				{
+					if(showMode == 1)
+					{
+						rowOfMaze = 11;
+						columnOfMaze = 42;
+					}
+					else
+					{
+						rowOfMaze = 21;
+						columnOfMaze = 21;
+					}
+				}
+				else if(choice == 3)
+				{
+					if(showMode == 1)
+					{
+						rowOfMaze = 14;
+						columnOfMaze = 55;
+					}
+					else
+					{
+						rowOfMaze = 24;
+						columnOfMaze = 44;
+					}
 				}
 				else
 				{
-					rowOfMaze = 15;
-					columnOfMaze = 15;
+					printf("[行数] [列数]>");
+					scanf("%d%d", &rowOfMaze, &columnOfMaze);
+					if(rowOfMaze < 1) rowOfMaze = 1;
+					if(columnOfMaze < 1) columnOfMaze = 1;
+					if(rowOfMaze > LimRow) rowOfMaze = LimRow;
+					if(columnOfMaze > LimColumn) columnOfMaze = LimColumn;
+					if(rowOfMaze == 1 && columnOfMaze == 1) columnOfMaze = 2;
 				}
 			}
 			else if(choice == 2)
 			{
-				if(showMode == 1)
-				{
-					rowOfMaze = 11;
-					columnOfMaze = 42;
-				}
-				else
-				{
-					rowOfMaze = 21;
-					columnOfMaze = 21;
-				}
+				printf("*******************************\n");
+				printf("(0)广度优先：简单\n");
+				printf("(1)深度优先：困难\n");
+				printf("*******************************\n");
+				printf(">");
+				scanf("%d", &summonMode);
 			}
-			else if(choice == 3)
-			{
-				if(showMode == 1)
-				{
-					rowOfMaze = 14;
-					columnOfMaze = 55;
-				}
-				else
-				{
-					rowOfMaze = 24;
-					columnOfMaze = 44;
-				}
-			}
-			else
-			{
-				printf("[行数] [列数]>");
-				scanf("%d%d", &rowOfMaze, &columnOfMaze);
-				if(rowOfMaze < 1) rowOfMaze = 1;
-				if(columnOfMaze < 1) columnOfMaze = 1;
-				if(rowOfMaze > LimRow) rowOfMaze = LimRow;
-				if(columnOfMaze > LimColumn) columnOfMaze = LimColumn;
-				if(rowOfMaze == 1 && columnOfMaze == 1) columnOfMaze = 2;
-			}
-			
 		}
 		else if(choice == 3)
 		{
@@ -811,15 +745,10 @@ int main()
 		}
 		else if(choice == 4)
 		{
-			printf("[迷宫生成模式：0广度优先/1深度优先]>");
-			scanf("%d", &summonMode);
-		}
-		else if(choice == 5)
-		{
 			printf("[迷宫显示模式：0数字Debug/1#/2■/3纯空格/4线条]>");
 			scanf("%d", &showMode);
 		}
-		else if(choice == 6)
+		else if(choice == 5)
 		{
 			t0 = time(0);
 			for(seed=0; seed<10000; seed++)
@@ -859,4 +788,7 @@ Maze 1.4
 Maze 1.5
 ——新增 深度优先迷宫生成
 ——优化 迷宫生成效率
+Maze 1.6
+——优化 线条显示代码
+——优化 主页和设置
 --------------------------------*/
