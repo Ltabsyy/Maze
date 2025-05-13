@@ -34,6 +34,17 @@ void gotoxy(int x, int y)//改变光标位置
 	COORD coord = {x, y};
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
 }
+void showCursor(int visible)//显示或隐藏光标
+{
+	CONSOLE_CURSOR_INFO cursor_info = {20, visible};
+	SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursor_info);
+}
+void ColorStr(const char* content, int color)//输出彩色字符
+{
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+	fputs(content, stdout);
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), showMode == 3 ? 0xf0 : 0x07);
+}
 
 int WallAroundIs(int r, int c, int right, int left, int down, int up)
 {
@@ -167,16 +178,8 @@ void ShowMaze()//显示迷宫
 			}
 			else if(showMode == 3)
 			{
-				if(maze[r][c] == 1)
-				{
-					SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 0x0f);
-					printf("  ");
-					SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 0xf0);
-				}
-				else if(maze[r][c] == 0)
-				{
-					printf("  ");
-				}
+				if(maze[r][c] == 1) ColorStr("  ", 0x0f);
+				else if(maze[r][c] == 0) printf("  ");
 			}
 			else if(showMode == 4)
 			{
@@ -486,9 +489,7 @@ void Solve()//自创随机遍历法求解迷宫
 				//printf("%c", path[row-1][column-1]);
 				if(showMode == 3)
 				{
-					SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 0xc0);
-					printf("  ");
-					SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 0xf0);
+					ColorStr("  ", 0xc0);
 				}
 				else
 				{
@@ -566,6 +567,13 @@ int main()
 			system("cls");
 			ShowMaze();
 			printf("[wasd:移动/`:放弃/!:显示答案]");
+			if(showMode == 1) gotoxy(cp, rp);
+			else gotoxy(2*cp, rp);
+			if(showMode > 1)
+			{
+				ColorStr("●\b\b", showMode == 3 ? 0xfc : 0x04);
+				showCursor(0);
+			}
 			while(1)
 			{
 				if(kbhit())
@@ -575,13 +583,11 @@ int main()
 					{
 						gotoxy(0, 2*rowOfMaze+2);
 						printf(":(\nYou Fail!\n");
-						remove("maze-lastmap.txt");
-						lastMap = 0;
-						system("pause");
 						break;
 					}
 					if(key == '!')
 					{
+						//if(showMode > 1) printf("  ");//会导致左线泛蓝
 						Solve();
 						rp = 2*rowOfMaze-1;
 						cp = 2*columnOfMaze-1;
@@ -596,9 +602,6 @@ int main()
 						{
 							gotoxy(0, 2*rowOfMaze+2);
 							printf(":)\n彳亍\n");
-							remove("maze-lastmap.txt");
-							lastMap = 0;
-							system("pause");
 							break;
 						}
 						if(maze[rp][cp-1] == 0) cp--;
@@ -611,29 +614,30 @@ int main()
 					{
 						if(maze[rp][cp+1] == 0) cp++;
 					}
-				}
-				else
-				{
+					if(showMode > 1) printf("  ");
 					if(showMode == 1) gotoxy(cp, rp);
 					else gotoxy(2*cp, rp);
+					if(showMode > 1) ColorStr("●\b\b", showMode == 3 ? 0xfc : 0x04);
 					file = fopen("maze-lastmap.txt", "w");
 					fprintf(file, "Map:%d*%d\n", rowOfMaze, columnOfMaze);
 					fprintf(file, "summonMode=%d\n", summonMode);
 					fprintf(file, "seed=%d\n", seed);
 					fprintf(file, "pos=(%d,%d)\n", rp, cp);
 					fclose(file);
-					Sleep(100);
 					if(rp==2*rowOfMaze-1 && cp==2*columnOfMaze)
 					{
+						if(showMode > 1) printf("  ");
 						gotoxy(0, 2*rowOfMaze+2);
 						printf(":)\nYou Win!\n");
-						remove("maze-lastmap.txt");
-						lastMap = 0;
-						system("pause");
 						break;
 					}
 				}
+				Sleep(100);
 			}
+			remove("maze-lastmap.txt");
+			lastMap = 0;
+			showCursor(1);
+			system("pause");
 		}
 		else if(choice == 2)
 		{
@@ -791,4 +795,7 @@ Maze 1.5
 Maze 1.6
 ——优化 线条显示代码
 ——优化 主页和设置
+Maze 1.7
+——新增 当前位置显示红色●
+——优化 仅在移动时更新游戏状态
 --------------------------------*/
