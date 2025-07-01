@@ -12,9 +12,9 @@
 #define LimRow 24
 #define LimColumn 44
 
-int maze[2*LimRow+1][2*LimColumn+1]={0};//存储含墙完整迷宫，0路，1墙，2已访问路
-char direction[LimRow][LimColumn]={0};//迷宫路径遍历，><v^字符代表方向
-char path[LimRow][LimColumn]={0};//迷宫解
+int maze[2*LimRow+1][2*LimColumn+1]={0};//含墙完整迷宫，0路，1墙，2已访问路
+char visitDirection[2*LimRow+1][2*LimColumn+1]={0};//迷宫已访问路径，0未访问，><v^字符代表方向
+char mainDirection[2*LimRow+1][2*LimColumn+1]={0};//已访问路径中从起点到当前位置的主路
 
 int rowOfPath = 9;//迷宫路行数
 int columnOfPath = 9;//迷宫路列数
@@ -23,7 +23,7 @@ int columnOfMaze = 2*9+1;
 int summonMode = 1;//0广度优先，1深度优先
 int sideLength = 32;
 
-void DrawSelection(int rm, int cm)
+void DrawSelection(int rp, int cp)
 {
 	int r, c;
 	cleardevice();
@@ -32,7 +32,7 @@ void DrawSelection(int rm, int cm)
 	{
 		for(c=4; c<9; c++)
 		{
-			if(r == rm && c == cm) setfillcolor(GRAY);
+			if(r == rp && c == cp) setfillcolor(GRAY);
 			else setfillcolor(LIGHTGRAY);
 			ege_fillrect(c*3*sideLength+sideLength/6, r*3*sideLength+sideLength/6, sideLength*8/3, sideLength*8/3);
 		}
@@ -89,13 +89,64 @@ void DrawMaze()
 					ege_fillcircle(c*sideLength+sideLength/2, r*sideLength+sideLength/2, sideLength/3);
 					setfillcolor(DARKGRAY);
 				}
-				if(link == 12 || link == 9 || link == 6 || link == 3)//双连拐点补小圆
+				/*if(link == 12 || link == 9 || link == 6 || link == 3)//双连拐点补小圆
 				{
 					ege_fillcircle(c*sideLength+sideLength/2, r*sideLength+sideLength/2, sideLength/16);
-				}
+				}*/
 			}
 		}
 	}
+}
+
+void DrawPath(int rp, int cp)
+{
+	int r, c;
+	setcolor(GREEN);
+	setfillcolor(GREEN);
+	setlinewidth(sideLength < 8 ? 2 : sideLength/8*2);//线宽为2起偶数避免模糊
+	for(r=0; r<rowOfMaze; r++)
+	{
+		for(c=0; c<columnOfMaze; c++)
+		{
+			if(visitDirection[r][c])
+			{
+				int link = 0;
+				if(r > 0 && visitDirection[r-1][c])
+				{
+					link |= 8;
+					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength);
+				}
+				if(c+1 < columnOfMaze && visitDirection[r][c+1])
+				{
+					link |= 4;
+					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, (c+1)*sideLength, r*sideLength+sideLength/2);
+				}
+				if(r+1 < rowOfMaze && visitDirection[r+1][c])
+				{
+					link |= 2;
+					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, (r+1)*sideLength);
+				}
+				if(c > 0 && visitDirection[r][c-1])
+				{
+					link |= 1;
+					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength, r*sideLength+sideLength/2);
+				}
+				if(link == 8 || link == 4 || link == 2 || link == 1 || link == 0)//单连中圆
+				{
+					setfillcolor(LIME);
+					ege_fillcircle(c*sideLength+sideLength/2, r*sideLength+sideLength/2, sideLength/4);
+					setfillcolor(GREEN);
+				}
+				/*if(link == 12 || link == 9 || link == 6 || link == 3)//双连拐点补小圆
+				{
+					ege_fillcircle(c*sideLength+sideLength/2, r*sideLength+sideLength/2, sideLength/8);
+				}*/
+			}
+		}
+	}
+	//当前位置绘制红色大圆
+	setfillcolor(RED);
+	ege_fillcircle(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, sideLength/3);
 }
 
 void InitWindow(int mode)
@@ -123,15 +174,16 @@ void InitWindow(int mode)
 		SetProcessDPIAware();//避免Windows缩放造成模糊
 		initgraph(9*3*sideLength, 2*3*sideLength, INIT_RENDERMANUAL);
 		setbkcolor(BLACK);
-		setfont(sideLength, 0, "Consolas");
+		//setfont(sideLength, 0, "Consolas");
 		setbkmode(TRANSPARENT);//默认设置为无背景字体
+		setlinecap(LINECAP_ROUND);//设置圆形线帽
 		ege_enable_aa(true);
 	}
 	else
 	{
 		if(summonMode == 1) setcaption("Maze Power - DFS");
 		else setcaption("Maze Power - BFS");
-		while(columnOfMaze*sideLength > screenWidth || (rowOfMaze+2)*sideLength > screenHeight)
+		while(columnOfMaze*sideLength > screenWidth || (rowOfMaze+4)*sideLength > screenHeight)
 		{
 			sideLength -= 4;
 		}
@@ -141,6 +193,90 @@ void InitWindow(int mode)
 	}
 }
 
+void MoveTo(int rt, int ct, int* prs, int* pcs)//直线移动并更新路径
+{
+	static int rs = 1, cs = 0;
+	int r = rs, c = cs, check = 1;
+	if(rt == 0 && ct == 0)//重置归位
+	{
+		rs = 1;
+		cs = 0;
+	}
+	else if(rt >= 0 && rt < rowOfMaze && ct >= 0 && ct < columnOfMaze && maze[rt][ct] != 1)
+	{
+		if(rt == rs && ct < cs)//左移
+		{
+			for(; c>=ct; c--)
+			{
+				if(maze[r][c] == 1) check = 0;
+			}
+			if(check == 1)//不存在阻挡
+			{
+				for(c=cs; c>=ct; c--)
+				{
+					visitDirection[r][c] = '<';
+				}
+				cs = ct;
+			}
+		}
+		else if(rt == rs && ct > cs)//右移
+		{
+			for(; c<=ct; c++)
+			{
+				if(maze[r][c] == 1) check = 0;
+			}
+			if(check == 1)
+			{
+				for(c=cs; c<=ct; c++)
+				{
+					visitDirection[r][c] = '>';
+				}
+				cs = ct;
+			}
+		}
+		else if(ct == cs && rt < rs)//上移
+		{
+			for(; r>=rt; r--)
+			{
+				if(maze[r][c] == 1) check = 0;
+			}
+			if(check == 1)
+			{
+				for(r=rs; r>=rt; r--)
+				{
+					visitDirection[r][c] = '^';
+				}
+				rs = rt;
+			}
+		}
+		else if(ct == cs && rt > rs)//下移
+		{
+			for(; r<=rt; r++)
+			{
+				if(maze[r][c] == 1) check = 0;
+			}
+			if(check == 1)
+			{
+				for(r=rs; r<=rt; r++)
+				{
+					visitDirection[r][c] = 'v';
+				}
+				rs = rt;
+			}
+		}
+	}
+	if(prs != NULL) *prs = rs;
+	if(pcs != NULL) *pcs = cs;
+}
+/*
+void MoveTowards(char direction)
+{
+	if(direction == '<' || direction == 'A')
+	{
+		
+	}
+}
+*/
 void SummonMaze(int seed)//自创随机遍历法生成迷宫
 {
 	int r, c;
@@ -154,6 +290,8 @@ void SummonMaze(int seed)//自创随机遍历法生成迷宫
 		for(c=0; c<columnOfMaze; c++)
 		{
 			maze[r][c] = 0;
+			visitDirection[r][c] = 0;
+			mainDirection[r][c] = 0;
 			if(r == 0 || c == 0 || r == rowOfMaze-1 || c == columnOfMaze-1)
 			{
 				maze[r][c] = 1;
@@ -325,18 +463,11 @@ void SummonMaze(int seed)//自创随机遍历法生成迷宫
 
 void Solve()//自创随机遍历法求解迷宫
 {
+	char direction[LimRow][LimColumn]={0};//迷宫路径遍历，><v^字符代表方向
 	int row=rowOfPath, column=columnOfPath;//从终点开始
 	int randomNumber;
 	char moveDirection;//移动方向
 	//初始化
-	for(row=0; row<rowOfPath; row++)
-	{
-		for(column=0; column<columnOfPath; column++)
-		{
-			direction[row][column] = 0;
-			path[row][column] = 0;
-		}
-	}
 	direction[row-1][column-1] = '>';
 	maze[2*row-1][2*column-1] = 2;//标记当前点已访问
 	while(1)
@@ -406,60 +537,89 @@ void Solve()//自创随机遍历法求解迷宫
 			maze[2*row-1][2*column-1] = 0;
 		}
 	}
-	//生成唯一路径
+	//输出唯一路径
+	MoveTo(0, 0, NULL, NULL);
+	MoveTo(1, 1, NULL, NULL);
 	for(row=1, column=1; row!=rowOfPath||column!=columnOfPath; )
 	{
-		path[row-1][column-1] = direction[row-1][column-1];
 		if(direction[row-1][column-1] == '>') column++;
 		else if(direction[row-1][column-1] == '<') column--;
 		else if(direction[row-1][column-1] == 'v') row++;
 		else if(direction[row-1][column-1] == '^') row--;
+		MoveTo(2*row-1, 2*column-1, NULL, NULL);
 	}
-	path[row-1][column-1] = '>';
-	//输出
-	for(row=1; row<=rowOfPath; row++)
-	{
-		for(column=1; column<=columnOfPath; column++)
-		{
-			if(path[row-1][column-1] != 0)
-			{
-				//setcolor(YELLOW);
-				//xyprintf((2*column-1)*sideLength+sideLength/4, (2*row-1)*sideLength, "%c", path[row-1][column-1]);
-				setfillcolor(YELLOW);
-				ege_fillcircle((2*column-1)*sideLength+sideLength/2, (2*row-1)*sideLength+sideLength/2, sideLength/2);
-			}
-		}
-	}
+	MoveTo(rowOfMaze-2, columnOfMaze-1, NULL, NULL);
 }
 
 int main()
 {
-	int difficulty = 0;
-	int r, c, rp, cp;
+	int difficulty = 0, seed;
+	int rp, cp, rm, cm;
 	mouse_msg mouseMsg;
 	key_msg keyMsg;
 	// 设置难度
 	InitWindow(0);
-	r = -1;
-	c = -1;
+	rp = -1;
+	cp = -1;
 	while(difficulty == 0)
 	{
-		DrawSelection(r, c);
+		DrawSelection(rp, cp);
 		while(mousemsg())
 		{
 			mouseMsg = getmouse();
-			r = mouseMsg.y / (3*sideLength);
-			c = mouseMsg.x / (3*sideLength);
+			rp = mouseMsg.y / (3*sideLength);
+			cp = mouseMsg.x / (3*sideLength);
 			if(mouseMsg.is_up())//选择难度
 			{
-				if(r == 1) summonMode = 1;
+				if(rp == 1) summonMode = 1;
 				else summonMode = 0;
-				if(c >= 4 && c <= 7) difficulty = c-3;
+				if(cp >= 4 && cp <= 7) difficulty = cp-3;
 				else difficulty = 5;
 			}
-			//if(mouseMsg.is_wheel() && keystate(key_control));//调整显示大小
+			if(mouseMsg.is_wheel() && keystate(key_control))//调整显示大小
+			{
+				if(mouseMsg.wheel > 0)
+				{
+					if(sideLength >= 16) sideLength += 4;
+					else sideLength++;
+				}
+				else
+				{
+					if(sideLength > 16) sideLength -= 4;
+					else if(sideLength > 6) sideLength--;
+				}
+				resizewindow(9*3*sideLength, 2*3*sideLength);
+				DrawSelection(rp, cp);
+			}
 		}
-		//while(kbmsg());
+		while(kbmsg())
+		{
+			keyMsg = getkey();
+			if(keyMsg.msg == key_msg_down)//按下时选择难度，长按时连续触发
+			{
+				if(keyMsg.key == 'W') rp--;
+				else if(keyMsg.key == 'A') cp--;
+				else if(keyMsg.key == 'S') rp++;
+				else if(keyMsg.key == 'D') cp++;
+				else if(keyMsg.key == 'E') rp = 0;
+				else if(keyMsg.key == 'H') rp = 1;
+				else if(keyMsg.key == 'M') cp = 7;
+				else if(keyMsg.key == 'C') cp = 8;
+				if(rp < 0) rp = 0;
+				if(cp < 4) cp = 4;
+				if(rp > 1) rp = 1;
+				if(cp > 8) cp = 8;
+				DrawSelection(rp, cp);
+			}
+			if(keyMsg.msg == key_msg_up)//抬起时确定选择
+			{
+				if(keyMsg.key == '\r' || keyMsg.key == ' ' || keyMsg.key == 'M' || keyMsg.key == 'C')
+				{
+					summonMode = rp;
+					difficulty = cp-3;
+				}
+			}
+		}
 		delay_ms(50);
 	}
 	if(difficulty == 1)
@@ -501,17 +661,24 @@ int main()
 	columnOfMaze = 2*columnOfPath+1;
 	// 游戏
 	InitWindow(1);
-	SummonMaze(time(0));
-	DrawMaze();
+	seed = time(0);
+	SummonMaze(seed);
 	rp = 1;
 	cp = 0;
-	setfillcolor(RED);
-	ege_fillcircle(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, sideLength/3);
 	while(1)
 	{
+		cleardevice();
+		DrawMaze();
+		DrawPath(rp, cp);
 		while(mousemsg())
 		{
 			mouseMsg = getmouse();
+			rm = mouseMsg.y / sideLength;
+			cm = mouseMsg.x / sideLength;
+			if(mouseMsg.is_up())
+			{
+				MoveTo(rm, cm, &rp, &cp);
+			}
 			if(mouseMsg.is_wheel() && keystate(key_control))//调整显示大小
 			{
 				if(mouseMsg.wheel > 0)
@@ -527,8 +694,7 @@ int main()
 				resizewindow(columnOfMaze*sideLength, rowOfMaze*sideLength);
 				setfont(sideLength, 0, "Consolas");
 				DrawMaze();
-				setfillcolor(RED);
-				ege_fillcircle(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, sideLength/3);
+				DrawPath(rp, cp);
 			}
 		}
 		while(kbmsg())
@@ -536,38 +702,18 @@ int main()
 			keyMsg = getkey();
 			if(keyMsg.msg == key_msg_down)
 			{
-				setfillcolor(BLACK);
-				ege_fillcircle(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, sideLength/3+1);
-				setfillcolor(GREEN);
-				ege_fillcircle(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, sideLength/4);
-				if(keyMsg.key == 'W')
+				if(keyMsg.key == 'W') MoveTo(rp-1, cp, &rp, &cp);
+				else if(keyMsg.key == 'A') MoveTo(rp, cp-1, &rp, &cp);
+				else if(keyMsg.key == 'S') MoveTo(rp+1, cp, &rp, &cp);
+				else if(keyMsg.key == 'D') MoveTo(rp, cp+1, &rp, &cp);
+				else if(keyMsg.key == 'R')//重置
 				{
-					if(maze[rp-1][cp] == 0) rp--;
-				}
-				else if(keyMsg.key == 'A')
-				{
-					if(rp == 1 && cp == 0);
-					else if(maze[rp][cp-1] == 0) cp--;
-				}
-				else if(keyMsg.key == 'S')
-				{
-					if(maze[rp+1][cp] == 0) rp++;
-				}
-				else if(keyMsg.key == 'D')
-				{
-					if(rp == rowOfMaze-2 && cp == columnOfMaze-1)
+					if(seed != time(0))
 					{
-						Solve();
+						seed = time(0);
+						SummonMaze(seed);
+						MoveTo(0, 0, &rp, &cp);
 					}
-					else if(maze[rp][cp+1] == 0) cp++;
-				}
-				else if(keyMsg.key == 'R')
-				{
-					SummonMaze(time(0));
-					cleardevice();
-					DrawMaze();
-					rp = 1;
-					cp = 0;
 				}
 				else if(keyMsg.key == '\t')
 				{
@@ -575,11 +721,22 @@ int main()
 					rp = rowOfMaze-2;
 					cp = columnOfMaze-1;
 				}
-				setfillcolor(RED);
-				ege_fillcircle(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, sideLength/3);
 			}
 		}
 		delay_ms(50);
 	}
 	return 0;
 }
+
+/*--------------------------------
+更新日志：
+Maze Power 0.2
+——新增 设置难度时的Ctrl+滚轮调整显示大小
+——新增 键盘选择难度
+——新增 通过鼠标点击在迷宫直线移动
+——优化 大规模迷宫的默认显示大小
+——优化 已访问路径显示连续的线条而不是圆圈
+——优化 用圆形线帽代替双连拐点补小圆以简化代码
+——优化 按Tab求解以已访问路径的形式显示解
+——优化 按R重置不再能高频刷新
+--------------------------------*/
