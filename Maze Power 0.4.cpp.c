@@ -50,10 +50,37 @@ void DrawSelection(int rp, int cp)
 
 void DrawMaze()//绘制迷宫
 {
-	int r, c, link;
+	int r, c, r1, c1, link;
 	setcolor(DARKGRAY);
 	setfillcolor(LIGHTGRAY);
 	setlinewidth(sideLength < 16 ? 2 : sideLength/16*2);//线宽为2起偶数避免模糊
+	//逐行绘制横线
+	for(r=0; r<rowOfMaze; r++)
+	{
+		for(c=0; c<columnOfMaze; c++)
+		{
+			if(maze[r][c] == 1)
+			{
+				for(c1=c; c<columnOfMaze && maze[r][c] == 1; c++);
+				c--;
+				ege_line(c1*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength+sideLength/2);
+			}
+		}
+	}
+	//逐列绘制纵线
+	for(c=0; c<columnOfMaze; c++)
+	{
+		for(r=0; r<rowOfMaze; r++)
+		{
+			if(maze[r][c] == 1)
+			{
+				for(r1=r; r<rowOfMaze && maze[r][c] == 1; r++);
+				r--;
+				ege_line(c*sideLength+sideLength/2, r1*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength+sideLength/2);
+			}
+		}
+	}
+	//逐点绘制单连大圆
 	for(r=0; r<rowOfMaze; r++)
 	{
 		for(c=0; c<columnOfMaze; c++)
@@ -62,27 +89,11 @@ void DrawMaze()//绘制迷宫
 			if(maze[r][c] == 1)
 			{
 				link = 0;
-				if(r > 0 && maze[r-1][c] == 1)
-				{
-					link |= 8;
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength);
-				}
-				if(c+1 < columnOfMaze && maze[r][c+1] == 1)
-				{
-					link |= 4;
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, (c+1)*sideLength, r*sideLength+sideLength/2);
-				}
-				if(r+1 < rowOfMaze && maze[r+1][c] == 1)
-				{
-					link |= 2;
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, (r+1)*sideLength);
-				}
-				if(c > 0 && maze[r][c-1] == 1)
-				{
-					link |= 1;
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength, r*sideLength+sideLength/2);
-				}
-				if(link == 8 || link == 4 || link == 2 || link == 1 || link == 0)//单连大圆
+				if(r > 0 && maze[r-1][c] == 1) link |= 8;
+				if(c+1 < columnOfMaze && maze[r][c+1] == 1) link |= 4;
+				if(r+1 < rowOfMaze && maze[r+1][c] == 1) link |= 2;
+				if(c > 0 && maze[r][c-1] == 1) link |= 1;
+				if(link == 8 || link == 4 || link == 2 || link == 1 || link == 0)
 				{
 					ege_fillcircle(c*sideLength+sideLength/2, r*sideLength+sideLength/2, sideLength/3);
 				}
@@ -93,24 +104,7 @@ void DrawMaze()//绘制迷宫
 
 void DrawPath(int rp, int cp)//绘制路径
 {
-	int r, c, link;
-	//计算主路
-	for(r=0; r<rowOfMaze; r++)
-	{
-		for(c=0; c<columnOfMaze; c++)
-		{
-			mainDirection[r][c] = 0;
-		}
-	}
-	for(r=1, c=0; !(r == rp && c == cp); )
-	{
-		mainDirection[r][c] = visitDirection[r][c];
-		if(visitDirection[r][c] == '<') c--;
-		else if(visitDirection[r][c] == '>') c++;
-		else if(visitDirection[r][c] == '^') r--;
-		else if(visitDirection[r][c] == 'v') r++;
-	}
-	mainDirection[rp][cp] = visitDirection[rp][cp];
+	int r, c, r1, c1, link;
 	//绘制支路(已访问路径-主路)
 	setcolor(DARKBLUE);
 	setfillcolor(BLUE);
@@ -121,28 +115,39 @@ void DrawPath(int rp, int cp)//绘制路径
 		{
 			if(visitDirection[r][c] && !mainDirection[r][c])
 			{
-				//xyprintf(c*sideLength+sideLength/4, r*sideLength, "%c", visitDirection[r][c]);
+				c1 = c;
+				if(c > 0 && mainDirection[r][c-1]) c1--;//绘制支路与主路的连接部分
+				for(; c<columnOfMaze && visitDirection[r][c] && !mainDirection[r][c]; c++);
+				if(!(c<columnOfMaze && mainDirection[r][c])) c--;
+				ege_line(c1*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength+sideLength/2);
+			}
+		}
+	}
+	for(c=0; c<columnOfMaze; c++)
+	{
+		for(r=0; r<rowOfMaze; r++)
+		{
+			if(visitDirection[r][c] && !mainDirection[r][c])
+			{
+				r1 = r;
+				if(r > 0 && mainDirection[r-1][c]) r1--;
+				for(; r<rowOfMaze && visitDirection[r][c] && !mainDirection[r][c]; r++);
+				if(!(r<rowOfMaze && mainDirection[r][c])) r--;
+				ege_line(c*sideLength+sideLength/2, r1*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength+sideLength/2);
+			}
+		}
+	}
+	for(r=0; r<rowOfMaze; r++)
+	{
+		for(c=0; c<columnOfMaze; c++)
+		{
+			if(visitDirection[r][c] && !mainDirection[r][c])
+			{
 				link = 0;
-				if(r > 0 && visitDirection[r-1][c])//连接主路的支路仍需绘制
-				{
-					link |= 8;
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength);
-				}
-				if(c+1 < columnOfMaze && visitDirection[r][c+1])
-				{
-					link |= 4;
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, (c+1)*sideLength, r*sideLength+sideLength/2);
-				}
-				if(r+1 < rowOfMaze && visitDirection[r+1][c])
-				{
-					link |= 2;
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, (r+1)*sideLength);
-				}
-				if(c > 0 && visitDirection[r][c-1])
-				{
-					link |= 1;
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength, r*sideLength+sideLength/2);
-				}
+				if(r > 0 && visitDirection[r-1][c]) link |= 8;
+				if(c+1 < columnOfMaze && visitDirection[r][c+1]) link |= 4;
+				if(r+1 < rowOfMaze && visitDirection[r+1][c]) link |= 2;
+				if(c > 0 && visitDirection[r][c-1]) link |= 1;
 				if(link == 8 || link == 4 || link == 2 || link == 1 || link == 0)//单连中圆
 				{
 					ege_fillcircle(c*sideLength+sideLength/2, r*sideLength+sideLength/2, sideLength/4);
@@ -150,33 +155,8 @@ void DrawPath(int rp, int cp)//绘制路径
 			}
 		}
 	}
-	//绘制支路与主路的连接部分
-	for(r=0; r<rowOfMaze; r++)
-	{
-		for(c=0; c<columnOfMaze; c++)
-		{
-			if(mainDirection[r][c])
-			{
-				if(r > 0 && visitDirection[r-1][c] && !mainDirection[r-1][c])
-				{
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength);
-				}
-				if(c+1 < columnOfMaze && visitDirection[r][c+1] && !mainDirection[r][c+1])
-				{
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, (c+1)*sideLength, r*sideLength+sideLength/2);
-				}
-				if(r+1 < rowOfMaze && visitDirection[r+1][c] && !mainDirection[r+1][c])
-				{
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, (r+1)*sideLength);
-				}
-				if(c > 0 && visitDirection[r][c-1] && !mainDirection[r][c-1])
-				{
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength, r*sideLength+sideLength/2);
-				}
-			}
-		}
-	}
-	setcolor(GREEN);
+	//绘制主路
+	setcolor(GREEN);//新生的绿意缠绕着深蓝的根(doge)
 	setfillcolor(LIME);
 	for(r=0; r<rowOfMaze; r++)
 	{
@@ -184,30 +164,61 @@ void DrawPath(int rp, int cp)//绘制路径
 		{
 			if(mainDirection[r][c])
 			{
-				//xyprintf(c*sideLength+sideLength/4, r*sideLength, "%c", mainDirection[r][c]);
-				if(r > 0 && mainDirection[r-1][c])
-				{
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength);
-				}
-				if(c+1 < columnOfMaze && mainDirection[r][c+1])
-				{
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, (c+1)*sideLength, r*sideLength+sideLength/2);
-				}
-				if(r+1 < rowOfMaze && mainDirection[r+1][c])
-				{
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, (r+1)*sideLength);
-				}
-				if(c > 0 && mainDirection[r][c-1])
-				{
-					ege_line(c*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength, r*sideLength+sideLength/2);
-				}
+				for(c1=c; c<columnOfMaze && mainDirection[r][c]; c++);
+				c--;
+				ege_line(c1*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength+sideLength/2);
+			}
+		}
+	}
+	for(c=0; c<columnOfMaze; c++)
+	{
+		for(r=0; r<rowOfMaze; r++)
+		{
+			if(mainDirection[r][c])
+			{
+				for(r1=r; r<rowOfMaze && mainDirection[r][c]; r++);
+				r--;
+				ege_line(c*sideLength+sideLength/2, r1*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength+sideLength/2);
 			}
 		}
 	}
 	ege_fillcircle(0*sideLength+sideLength/2, 1*sideLength+sideLength/2, sideLength/4);//主路的单连中圆仅在起点
-	//当前位置绘制红色大圆
+	/*for(r=0; r<rowOfMaze; r++)
+	{
+		for(c=0; c<columnOfMaze; c++)
+		{
+			if(mainDirection[r][c])
+			{
+				setcolor(LIME);
+				xyprintf(c*sideLength+sideLength/4, r*sideLength, "%c", mainDirection[r][c]);
+			}
+			else if(visitDirection[r][c])
+			{
+				setcolor(BLUE);
+				xyprintf(c*sideLength+sideLength/4, r*sideLength, "%c", visitDirection[r][c]);
+			}
+		}
+	}*/
+	//绘制当前位置
+	setcolor(DARKRED);
 	setfillcolor(RED);
-	ege_fillcircle(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, sideLength/3);
+	if(mainDirection[rp][cp] == 'v')//在主路反向绘制小段红线指示来时路
+	{
+		ege_line(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, cp*sideLength+sideLength/2, rp*sideLength);
+	}
+	else if(mainDirection[rp][cp] == '<')
+	{
+		ege_line(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, (cp+1)*sideLength, rp*sideLength+sideLength/2);
+	}
+	else if(mainDirection[rp][cp] == '^')
+	{
+		ege_line(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, cp*sideLength+sideLength/2, (rp+1)*sideLength);
+	}
+	else if(mainDirection[rp][cp] == '>')
+	{
+		ege_line(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, cp*sideLength, rp*sideLength+sideLength/2);
+	}
+	ege_fillcircle(cp*sideLength+sideLength/2, rp*sideLength+sideLength/2, sideLength/3);//红色大圆
 }
 
 void InitWindow(int mode)
@@ -343,26 +354,11 @@ void MovePolyline(int rt, int ct, int* prs, int* pcs)//折线移动并更新路�
 		else
 		{
 			int r1, c1, r2, c2, r, c, check = 15;
-			if(rt < rs)
-			{
-				r1 = rt;
-				r2 = rs;
-			}
-			else
-			{
-				r1 = rs;
-				r2 = rt;
-			}
-			if(ct < cs)
-			{
-				c1 = ct;
-				c2 = cs;
-			}
-			else
-			{
-				c1 = cs;
-				c2 = ct;
-			}
+			//确定左上点和右下点
+			r1 = (rs < rt) ? rs : rt;
+			r2 = (rs > rt) ? rs : rt;
+			c1 = (cs < ct) ? cs : ct;
+			c2 = (cs > ct) ? cs : ct;
 			//计算4条线的可移动性
 			for(r=r1, c=c1; c<=c2; c++)
 			{
@@ -381,35 +377,29 @@ void MovePolyline(int rt, int ct, int* prs, int* pcs)//折线移动并更新路�
 				if(maze[r][c] == 1) check &= ~1;
 			}
 			//移动
-			if(check == 12)//上右可移
+			if((rt == r1 && ct == c1) || (rt == r2 && ct == c2))//左上-右下
 			{
-				if((rt == r1 && ct == c1) || (rt == r2 && ct == c2))//左上-右下
+				if((check & 12) == 12)//上右可移，包含上右下、上右左可移
 				{
 					MoveTo(r1, c2, &rs, &cs);//移动到右上
 					MoveTo(rt, ct, &rs, &cs);
 				}
+				else if((check & 3) == 3)//下左
+				{
+					MoveTo(r2, c1, &rs, &cs);//移动到左下
+					MoveTo(rt, ct, &rs, &cs);
+				}
 			}
-			else if(check == 9)//上左
+			else// if((rt == r2 && ct == c1) || (rt == r1 && ct == c2))//左下-右上
 			{
-				if((rt == r2 && ct == c1) || (rt == r1 && ct == c2))//左下-右上
+				if((check & 9) == 9)//上左
 				{
 					MoveTo(r1, c1, &rs, &cs);//移动到左上
 					MoveTo(rt, ct, &rs, &cs);
 				}
-			}
-			else if(check == 6)//右下
-			{
-				if((rt == r2 && ct == c1) || (rt == r1 && ct == c2))//左下-右上
+				else if((check & 6) == 6)//右下
 				{
 					MoveTo(r2, c2, &rs, &cs);//移动到右下
-					MoveTo(rt, ct, &rs, &cs);
-				}
-			}
-			else if(check == 3)//下左
-			{
-				if((rt == r1 && ct == c1) || (rt == r2 && ct == c2))//左上-右下
-				{
-					MoveTo(r2, c1, &rs, &cs);//移动到左下
 					MoveTo(rt, ct, &rs, &cs);
 				}
 			}
@@ -457,11 +447,32 @@ void MoveTowards(char direction, int* prs, int* pcs)//根据方向移动到岔�
 	if(pcs != NULL) *pcs = cs;
 }
 
+void UpdateMainPath(int rp, int cp)//计算主路
+{
+	int r, c;
+	for(r=0; r<rowOfMaze; r++)
+	{
+		for(c=0; c<columnOfMaze; c++)
+		{
+			mainDirection[r][c] = 0;
+		}
+	}
+	for(r=1, c=0; !(r == rp && c == cp); )
+	{
+		mainDirection[r][c] = visitDirection[r][c];
+		if(visitDirection[r][c] == '<') c--;
+		else if(visitDirection[r][c] == '>') c++;
+		else if(visitDirection[r][c] == '^') r--;
+		else if(visitDirection[r][c] == 'v') r++;
+	}
+	mainDirection[rp][cp] = visitDirection[rp][cp];
+}
+
 void SummonMaze(int seed)//自创随机遍历法生成迷宫
 {
 	int r, c;
 	int row=rowOfPath, column=columnOfPath;//从终点开始，起点为(1,1)
-	int randomNumber, remainder;
+	int remainder;
 	char pushDirection;
 	//初始化
 	for(r=0; r<rowOfMaze; r++)
@@ -507,23 +518,7 @@ void SummonMaze(int seed)//自创随机遍历法生成迷宫
 				}
 			}
 			//决定挖开方向
-			randomNumber = rand()%100;
-			if(randomNumber < 25)//25%概率
-			{
-				pushDirection = '>';
-			}
-			else if(randomNumber < 50)
-			{
-				pushDirection = '<';
-			}
-			else if(randomNumber < 75)
-			{
-				pushDirection = 'v';
-			}
-			else
-			{
-				pushDirection = '^';
-			}
+			pushDirection = "><v^"[rand()%100/25];//25%概率
 			//尝试挖开
 			if(pushDirection == '>')
 			{
@@ -576,23 +571,7 @@ void SummonMaze(int seed)//自创随机遍历法生成迷宫
 				if(maze[2*row-1][2*column-1] == 2) break;//效率不高，不过也够用(doge)
 			}
 			//决定挖开方向
-			randomNumber = rand()%100;
-			if(randomNumber < 25)//25%概率
-			{
-				pushDirection = '>';
-			}
-			else if(randomNumber < 50)
-			{
-				pushDirection = '<';
-			}
-			else if(randomNumber < 75)
-			{
-				pushDirection = 'v';
-			}
-			else
-			{
-				pushDirection = '^';
-			}
+			pushDirection = "><v^"[rand()%100/25];//25%概率
 			//尝试挖开
 			if(pushDirection == '>')
 			{
@@ -644,7 +623,6 @@ void Solve()//自创随机遍历法求解迷宫
 {
 	char direction[LimRow][LimColumn]={0};//迷宫路径遍历，><v^字符代表方向
 	int row=rowOfPath, column=columnOfPath;//从终点开始
-	int randomNumber;
 	char moveDirection;//移动方向
 	//初始化
 	direction[row-1][column-1] = '>';
@@ -659,23 +637,7 @@ void Solve()//自创随机遍历法求解迷宫
 			if(maze[2*row-1][2*column-1] == 2) break;
 		}
 		//决定移动方向
-		randomNumber = rand()%100;
-		if(randomNumber < 25)//25%概率
-		{
-			moveDirection = '>';
-		}
-		else if(randomNumber < 50)
-		{
-			moveDirection = '<';
-		}
-		else if(randomNumber < 75)
-		{
-			moveDirection = 'v';
-		}
-		else
-		{
-			moveDirection = '^';
-		}
+		moveDirection = "><v^"[rand()%100/25];//25%概率
 		//尝试移动
 		if(moveDirection == '>')
 		{
@@ -861,6 +823,7 @@ int main()
 			if(mouseMsg.is_up())
 			{
 				MovePolyline(rm, cm, &rp, &cp);
+				UpdateMainPath(rp, cp);
 			}
 			if(mouseMsg.is_wheel() && keystate(key_control))//调整显示大小
 			{
@@ -888,6 +851,7 @@ int main()
 				if(keyMsg.key == 'W' || keyMsg.key == 'A' || keyMsg.key == 'S' || keyMsg.key == 'D')
 				{
 					MoveTowards(keyMsg.key, &rp, &cp);
+					UpdateMainPath(rp, cp);
 				}
 				else if(keyMsg.key == 'R')//重置
 				{
@@ -903,6 +867,7 @@ int main()
 					Solve();
 					rp = rowOfMaze-2;
 					cp = columnOfMaze-1;
+					UpdateMainPath(rp, cp);
 				}
 			}
 		}
@@ -929,4 +894,9 @@ Maze Power 0.3
 ——优化 简化迷宫和路径的绘制代码
 ——优化 根据宏定义生成自定义迷宫规模输入框的提示文字
 ——修复 最大规模迷宫按Tab求解会产生左下开口
+Maze Power 0.4
+——新增 当前位置附近显示小段红线指示来时路
+——优化 重构迷宫和路径绘制算法
+——优化 仅在移动后计算主路
+——修复 鼠标折线移动可能失效
 --------------------------------*/
