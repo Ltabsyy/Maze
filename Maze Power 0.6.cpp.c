@@ -448,6 +448,19 @@ void MoveTowards(char direction, int* prs, int* pcs)//根据方向移动到岔�
 	if(pcs != NULL) *pcs = cs;
 }
 
+void MoveBack(int* prs, int* pcs)//沿主路返回上一个岔路口并更新路径
+{
+	int rs, cs;
+	MoveTo(-1, -1, &rs, &cs);//获取当前位置
+	//在周围寻找主路并移动
+	if(cs > 0 && mainDirection[rs][cs-1]) MoveTowards('<', &rs, &cs);
+	else if(cs+1 < columnOfMaze && mainDirection[rs][cs+1]) MoveTowards('>', &rs, &cs);
+	else if(rs > 0 && mainDirection[rs-1][cs]) MoveTowards('^', &rs, &cs);
+	else if(rs+1 < rowOfMaze && mainDirection[rs+1][cs]) MoveTowards('v', &rs, &cs);
+	if(prs != NULL) *prs = rs;
+	if(pcs != NULL) *pcs = cs;
+}
+
 void UpdateMainPath(int rp, int cp)//计算主路
 {
 	int r, c;
@@ -467,6 +480,56 @@ void UpdateMainPath(int rp, int cp)//计算主路
 		else if(visitDirection[r][c] == 'v') r++;
 	}
 	mainDirection[rp][cp] = visitDirection[rp][cp];
+}
+
+void AdjustCoord(int x, int y, int* pr, int* pc)//墙格尝试基于像素坐标转为对应空格坐标（墙格显示为线条）
+{
+	const static int adjustList[16][4] = {
+		{0, 0, 0, 0},//0无连
+		{8, 4, 2, 4},//1单连左，向根部二边和指向一边调整
+		{8, 8, 1, 4},//2单连下
+		{8, 12, 3, 4},//3拐双连┓，向轴向二角和翼部二边调整
+		{1, 8, 1, 2},//4单连右
+		{8, 8, 2, 2},//5平双连━，向二边调整
+		{9, 8, 1, 6},//6拐双连┏
+		{8, 8, 3, 6},//7三连┳，向二角和一边调整
+		{1, 4, 2, 2},//8单连上
+		{9, 4, 2, 6},//9拐双连┛
+		{1, 4, 1, 4},//10平双连┃
+		{9, 4, 3, 4},//11三连┫
+		{1, 12, 3, 2},//12拐双连┗
+		{9, 12, 2, 2},//13三连┻
+		{1, 12, 1, 6},//14三连┣
+		{9, 12, 3, 6}//15四连╋，向四角调整
+	};
+	int r, c, link = 0, quadrant = 0, adjust = 0;
+	r = y / sideLength;
+	c = x / sideLength;
+	if(maze[r][c] == 1)//非墙格无需转换
+	{
+		//计算连线形式，8421为上右下左的连接性
+		if(r > 0 && maze[r-1][c] == 1) link |= 8;
+		if(c+1 < columnOfMaze && maze[r][c+1] == 1) link |= 4;
+		if(r+1 < rowOfMaze && maze[r+1][c] == 1) link |= 2;
+		if(c > 0 && maze[r][c-1] == 1) link |= 1;
+		//计算所处象限，21为偏下和偏右
+		//0 1
+		//2 3
+		if(y % sideLength >= sideLength/2) quadrant |= 2;
+		if(x % sideLength >= sideLength/2) quadrant |= 1;
+		//计算调整形式，8421为是否向上右下左调整
+		//9 8 12
+		//1 0 4
+		//3 2 6
+		adjust = adjustList[link][quadrant];//查表
+		//调整坐标
+		if(adjust & 8) r--;
+		if(adjust & 4) c++;
+		if(adjust & 2) r++;
+		if(adjust & 1) c--;
+	}
+	if(pr != NULL) *pr = r;
+	if(pc != NULL) *pc = c;
 }
 
 void SummonMaze(int seed)//自创随机遍历法生成迷宫
@@ -802,6 +865,7 @@ int main()
 			mouseMsg = getmouse();
 			rm = mouseMsg.y / sideLength;
 			cm = mouseMsg.x / sideLength;
+			if(maze[rm][cm] == 1) AdjustCoord(mouseMsg.x, mouseMsg.y, &rm, &cm);
 			if(mouseMsg.is_down()) isMoving = 1;
 			if(mouseMsg.is_up()) isMoving = 0;
 			if(isMoving && (rm != rp || cm != cp))
@@ -840,6 +904,11 @@ int main()
 				else if(keyMsg.key >= key_left && keyMsg.key <= key_down)//方向键<^>v为0x25到0x28
 				{
 					MoveTowards("<^>v"[keyMsg.key-key_left], &rp, &cp);
+					UpdateMainPath(rp, cp);
+				}
+				else if(keyMsg.key == 'B')
+				{
+					MoveBack(&rp, &cp);
 					UpdateMainPath(rp, cp);
 				}
 				else if(keyMsg.key == 'R')//重置
@@ -893,6 +962,9 @@ Maze Power 0.5
 ——新增 鼠标按下时连续触发移动
 ——优化 更精细的默认显示大小
 ——优化 重构迷宫求解算法
+Maze Power 0.6
+——新增 键盘按B沿主路返回上一个岔路口
+——优化 对于墙格的点击拟合到对应空格的点击
 //——优化 重新称呼现有的可选难度
 //——优化 重构迷宫生成算法
 --------------------------------*/
