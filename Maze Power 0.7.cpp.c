@@ -9,10 +9,10 @@
  * 
  * https://github.com/Ltabsyy/Maze
  **/
-#define LimRow 24
-#define LimColumn 44
+#define LimRow 240
+#define LimColumn 448
 
-int maze[2*LimRow+1][2*LimColumn+1]={0};//含墙完整迷宫，0路，1墙，2已访问路
+int maze[2*LimRow+1][2*LimColumn+1]={0};//含墙完整迷宫，0路，1墙
 char visitDirection[2*LimRow+1][2*LimColumn+1]={0};//迷宫已访问路径，0未访问，><v^字符代表方向
 char mainDirection[2*LimRow+1][2*LimColumn+1]={0};//已访问路径中从起点到当前位置的主路
 
@@ -20,32 +20,30 @@ int rowOfPath = 9;//迷宫路行数
 int columnOfPath = 9;//迷宫路列数
 int rowOfMaze = 2*9+1;
 int columnOfMaze = 2*9+1;
-int summonMode = 1;//0广度优先，1深度优先
+int summonMode = 1;//0广度优先，1深广混合，2深度优先
 int sideLength = 32;
 
 void DrawSelection(int rp, int cp)
 {
 	int r, c;
+	const char* sizeName[5] = {"XS", "S", "M", "L", "C"};
 	cleardevice();
 	setfont(sideLength*5/2, 0, "Consolas");
-	for(r=0; r<2; r++)
+	setcolor(BLACK);
+	for(r=0; r<3; r++)
 	{
 		for(c=4; c<9; c++)
 		{
-			if(r == rp && c == cp) setfillcolor(GRAY);
-			else setfillcolor(LIGHTGRAY);
+			setfillcolor((r == rp && c == cp) ? GRAY : LIGHTGRAY);
 			ege_fillrect(c*3*sideLength+sideLength/6, r*3*sideLength+sideLength/6, sideLength*8/3, sideLength*8/3);
+			if(sizeName[c-4][1]) xyprintf(c*3*sideLength+sideLength*3/8, r*3*sideLength+sideLength/4, sizeName[c-4]);//原1/4，略右移以居中
+			else xyprintf(c*3*sideLength+sideLength*7/8, r*3*sideLength+sideLength/4, sizeName[c-4]);
 		}
-		setcolor(BLACK);
-		xyprintf(4*3*sideLength+sideLength*7/8, r*3*sideLength+sideLength/4, "9");
-		xyprintf(5*3*sideLength+sideLength/4+1, r*3*sideLength+sideLength/4, "15");//略右移以居中
-		xyprintf(6*3*sideLength+sideLength/4+1, r*3*sideLength+sideLength/4, "21");
-		xyprintf(7*3*sideLength+sideLength*7/8, r*3*sideLength+sideLength/4, "M");
-		xyprintf(8*3*sideLength+sideLength*7/8, r*3*sideLength+sideLength/4, "C");
 	}
 	setcolor(LIGHTGRAY);
 	xyprintf(sideLength*3/8, 0*sideLength+sideLength/4, "Easy(BFS)");
-	xyprintf(sideLength*3/8, 3*sideLength+sideLength/4, "Hard(DFS)");
+	xyprintf(sideLength*3/8, 3*sideLength+sideLength/4, "Normal");
+	xyprintf(sideLength*3/8, 6*sideLength+sideLength/4, "Hard(DFS)");
 }
 
 void DrawMaze()//绘制迷宫
@@ -244,7 +242,7 @@ void InitWindow(int mode)
 		else sideLength = 16;
 		setcaption("Maze Power");
 		SetProcessDPIAware();//避免Windows缩放造成模糊
-		initgraph(9*3*sideLength, 2*3*sideLength, INIT_RENDERMANUAL);
+		initgraph(9*3*sideLength, 3*3*sideLength, INIT_RENDERMANUAL);
 		setbkcolor(BLACK);
 		//setfont(sideLength, 0, "Consolas");
 		setbkmode(TRANSPARENT);//默认设置为无背景字体
@@ -253,9 +251,10 @@ void InitWindow(int mode)
 	}
 	else
 	{
-		if(summonMode == 1) setcaption("Maze Power - DFS");
+		if(summonMode == 2) setcaption("Maze Power - DFS");
+		else if(summonMode == 1) setcaption("Maze Power - Mix");
 		else setcaption("Maze Power - BFS");
-		while(columnOfMaze*sideLength > screenWidth || (rowOfMaze+4)*sideLength > screenHeight)
+		while(columnOfMaze*sideLength > screenWidth || rowOfMaze*sideLength > screenHeight*10/11)
 		{
 			if(sideLength > 16) sideLength -= 4;
 			else sideLength--;
@@ -461,6 +460,25 @@ void MoveBack(int* prs, int* pcs)//沿主路返回上一个岔路口并更新路
 	if(pcs != NULL) *pcs = cs;
 }
 
+void MoveBackTo(int rt, int ct, int* prs, int* pcs)//沿主路返回指定位置并更新路径
+{
+	int rs, cs;
+	MoveTo(-1, -1, &rs, &cs);//获取当前位置
+	if(rt >= 0 && rt < rowOfMaze && ct >= 0 && ct < columnOfMaze && mainDirection[rt][ct])
+	{
+		while(rs != rt || cs != ct)
+		{
+			mainDirection[rs][cs] = 0;
+			if(cs > 0 && mainDirection[rs][cs-1]) MoveTo(rs, cs-1, &rs, &cs);
+			else if(cs+1 < columnOfMaze && mainDirection[rs][cs+1]) MoveTo(rs, cs+1, &rs, &cs);
+			else if(rs > 0 && mainDirection[rs-1][cs]) MoveTo(rs-1, cs, &rs, &cs);
+			else if(rs+1 < rowOfMaze && mainDirection[rs+1][cs]) MoveTo(rs+1, cs, &rs, &cs);
+		}
+	}
+	if(prs != NULL) *prs = rs;
+	if(pcs != NULL) *pcs = cs;
+}
+
 void UpdateMainPath(int rp, int cp)//计算主路
 {
 	int r, c;
@@ -532,12 +550,12 @@ void AdjustCoord(int x, int y, int* pr, int* pc)//墙格尝试基于像素坐标
 	if(pc != NULL) *pc = c;
 }
 
-void SummonMaze(int seed)//自创随机遍历法生成迷宫
+void SummonMaze(int seed)//生成迷宫
 {
-	int r, c;
-	int row=rowOfPath, column=columnOfPath;//从终点开始，起点为(1,1)
-	int remainder;
-	char pushDirection;
+	int r, c, i, rt, ct;
+	const int dr[4] = {0, 0, -1, 1};//方向偏移数组
+	const int dc[4] = {-1, 1, 0, 0};
+	int isVisited[LimRow][LimColumn]={0};//标记(2r+1,2c+1)的路已访问
 	//初始化
 	for(r=0; r<rowOfMaze; r++)
 	{
@@ -546,13 +564,9 @@ void SummonMaze(int seed)//自创随机遍历法生成迷宫
 			maze[r][c] = 0;
 			visitDirection[r][c] = 0;
 			mainDirection[r][c] = 0;
-			if(r == 0 || c == 0 || r == rowOfMaze-1 || c == columnOfMaze-1)
+			if(r%2 == 0 || c%2 == 0 || r == rowOfMaze-1 || c == columnOfMaze-1)
 			{
-				maze[r][c] = 1;
-			}
-			else if(r%2 == 0 || c%2 == 0)//填满，生成时挖
-			{
-				maze[r][c] = 1;
+				maze[r][c] = 1;//墙满，生成时挖
 			}
 		}
 	}
@@ -560,125 +574,106 @@ void SummonMaze(int seed)//自创随机遍历法生成迷宫
 	maze[rowOfMaze-2][columnOfMaze-1] = 0;
 	//生成
 	srand(seed);
-	maze[2*row-1][2*column-1] = 2;//标记当前点已访问
-	remainder = rowOfPath*columnOfPath - 1;
-	if(summonMode == 1)//深度优先
+	isVisited[rowOfPath-1][columnOfPath-1] = 1;
+	if(summonMode == 2)//深度优先
 	{
-		row = rowOfPath;
-		column = columnOfPath;
-		while(1)
+		int stackR[LimRow*LimColumn];
+		int stackC[LimRow*LimColumn];
+		int top = 0;
+		stackR[top] = rowOfMaze-2;
+		stackC[top] = columnOfMaze-2;
+		top++;//终点入栈
+		while(top > 0)//栈非空
 		{
-			while((column == columnOfPath || maze[2*row-1][2*column+1] == 2)
-				  && (column == 1 || maze[2*row-1][2*column-3] == 2)
-				  && (row == rowOfPath || maze[2*row+1][2*column-1] == 2)
-				  && (row == 1 || maze[2*row-3][2*column-1] == 2))
+			r = stackR[top-1];
+			c = stackC[top-1];
+			i = rand()%4;
+			rt = r + dr[i]*2;
+			ct = c + dc[i]*2;
+			//栈顶尝试移动
+			if(rt >= 0 && rt < rowOfMaze && ct >= 0 && ct < columnOfMaze
+				&& !isVisited[(rt-1)/2][(ct-1)/2])//未出界且未访问
 			{
-				//寻找已访问点
-				while(1)
+				maze[r+dr[i]][c+dc[i]] = 0;//挖开
+				isVisited[(rt-1)/2][(ct-1)/2] = 1;
+				stackR[top] = rt;
+				stackC[top] = ct;
+				top++;//下次循环将以新点继续尝试
+			}
+			//栈顶走死则出栈
+			while(top > 0)
+			{
+				r = stackR[top-1];
+				c = stackC[top-1];
+				if((r == 1 || isVisited[(r-3)/2][(c-1)/2])
+					&& (r == rowOfMaze-2 || isVisited[(r+1)/2][(c-1)/2])
+					&& (c == 1 || isVisited[(r-1)/2][(c-3)/2])
+					&& (c == columnOfMaze-2 || isVisited[(r-1)/2][(c+1)/2]))
 				{
-					row = rand()%rowOfPath+1;
-					column = rand()%columnOfPath+1;
-					if(maze[2*row-1][2*column-1] == 2) break;//效率不高，不过也够用(doge)
+					top--;
 				}
+				else break;
 			}
-			//决定挖开方向
-			pushDirection = "><v^"[rand()%100/25];//25%概率
-			//尝试挖开
-			if(pushDirection == '>')
-			{
-				if(column == columnOfPath) continue;//挖到边界
-				if(maze[2*row-1][2*column+1] == 2) continue;//挖到已访问
-				maze[2*row-1][2*column] = 0;//挖开
-				maze[2*row-1][2*column+1] = 2;//标记挖开点已访问
-				remainder--;
-				column++;
-			}
-			else if(pushDirection == '<')
-			{
-				if(column == 1) continue;
-				if(maze[2*row-1][2*column-3] == 2) continue;
-				maze[2*row-1][2*column-2] = 0;
-				maze[2*row-1][2*column-3] = 2;
-				remainder--;
-				column--;
-			}
-			else if(pushDirection == 'v')
-			{
-				if(row == rowOfPath) continue;
-				if(maze[2*row+1][2*column-1] == 2) continue;
-				maze[2*row][2*column-1] = 0;
-				maze[2*row+1][2*column-1] = 2;
-				remainder--;
-				row++;
-			}
-			else if(pushDirection == '^')
-			{
-				if(row == 1) continue;
-				if(maze[2*row-3][2*column-1] == 2) continue;
-				maze[2*row-2][2*column-1] = 0;
-				maze[2*row-3][2*column-1] = 2;
-				remainder--;
-				row--;
-			}
-			if(remainder == 0) break;
+			//栈顶此次未能移动且未走死，下次循环再次尝试
 		}
 	}
-	else//广度优先
+	else//广度优先或深广混合
 	{
-		while(1)
+		int queueR[LimRow*LimColumn];
+		int queueC[LimRow*LimColumn];
+		int front = 0, rear = 0;
+		queueR[rear] = rowOfMaze-2;
+		queueC[rear] = columnOfMaze-2;
+		rear++;//终点入队
+		while(front < rear)//队列非空
 		{
-			//寻找已访问点
+			//在队列中随机选择点
+			i = front + rand() % (rear-front);
+			r = queueR[i];
+			c = queueC[i];
 			while(1)
 			{
-				row = rand()%rowOfPath+1;
-				column = rand()%columnOfPath+1;
-				if(maze[2*row-1][2*column-1] == 2) break;//效率不高，不过也够用(doge)
+				if((r == 1 || isVisited[(r-3)/2][(c-1)/2])
+					&& (r == rowOfMaze-2 || isVisited[(r+1)/2][(c-1)/2])
+					&& (c == 1 || isVisited[(r-1)/2][(c-3)/2])
+					&& (c == columnOfMaze-2 || isVisited[(r-1)/2][(c+1)/2]))
+				{
+					break;//走死退出
+				}
+				i = rand()%4;
+				rt = r + dr[i]*2;
+				ct = c + dc[i]*2;
+				//尝试移动
+				if(rt >= 0 && rt < rowOfMaze && ct >= 0 && ct < columnOfMaze
+					&& !isVisited[(rt-1)/2][(ct-1)/2])//未出界且未访问
+				{
+					maze[r+dr[i]][c+dc[i]] = 0;//挖开
+					isVisited[(rt-1)/2][(ct-1)/2] = 1;
+					queueR[rear] = rt;
+					queueC[rear] = ct;
+					rear++;
+					if(summonMode == 1)//混合模式连续移动
+					{
+						r = rt;
+						c = ct;
+					}
+					else break;//广度优先重新选点
+				}
 			}
-			//决定挖开方向
-			pushDirection = "><v^"[rand()%100/25];//25%概率
-			//尝试挖开
-			if(pushDirection == '>')
+			//队首走死则出队
+			while(front < rear)
 			{
-				if(column == columnOfPath) continue;//挖到边界
-				if(maze[2*row-1][2*column+1] == 2) continue;//挖到已访问
-				maze[2*row-1][2*column] = 0;//挖开
-				maze[2*row-1][2*column+1] = 2;//标记挖开点已访问
-				remainder--;
+				r = queueR[front];
+				c = queueC[front];
+				if((r == 1 || isVisited[(r-3)/2][(c-1)/2])
+					&& (r == rowOfMaze-2 || isVisited[(r+1)/2][(c-1)/2])
+					&& (c == 1 || isVisited[(r-1)/2][(c-3)/2])
+					&& (c == columnOfMaze-2 || isVisited[(r-1)/2][(c+1)/2]))
+				{
+					front++;
+				}
+				else break;
 			}
-			else if(pushDirection == '<')
-			{
-				if(column == 1) continue;
-				if(maze[2*row-1][2*column-3] == 2) continue;
-				maze[2*row-1][2*column-2] = 0;
-				maze[2*row-1][2*column-3] = 2;
-				remainder--;
-			}
-			else if(pushDirection == 'v')
-			{
-				if(row == rowOfPath) continue;
-				if(maze[2*row+1][2*column-1] == 2) continue;
-				maze[2*row][2*column-1] = 0;
-				maze[2*row+1][2*column-1] = 2;
-				remainder--;
-			}
-			else if(pushDirection == '^')
-			{
-				if(row == 1) continue;
-				if(maze[2*row-3][2*column-1] == 2) continue;
-				maze[2*row-2][2*column-1] = 0;
-				maze[2*row-3][2*column-1] = 2;
-				remainder--;
-			}
-			//检查是否生成完毕
-			if(remainder == 0) break;
-		}
-	}
-	//删除已访问标记
-	for(row=1; row<=rowOfPath; row++)
-	{
-		for(column=1; column<=columnOfPath; column++)
-		{
-			maze[2*row-1][2*column-1] = 0;
 		}
 	}
 }
@@ -742,7 +737,7 @@ int main()
 	key_msg keyMsg;
 	// 设置难度
 	InitWindow(0);
-	rp = -1;
+	rp = 1;
 	cp = -1;
 	while(difficulty == 0)
 	{
@@ -754,10 +749,8 @@ int main()
 			cp = mouseMsg.x / (3*sideLength);
 			if(mouseMsg.is_up())//选择难度
 			{
-				if(rp == 1) summonMode = 1;
-				else summonMode = 0;
-				if(cp >= 4 && cp <= 7) difficulty = cp-3;
-				else difficulty = 5;
+				summonMode = (rp == 0 || rp == 2) ? rp : 1;
+				difficulty = (cp >= 4 && cp <= 7) ? cp-3 : 5;
 			}
 			if(mouseMsg.is_wheel() && keystate(key_control))//调整显示大小
 			{
@@ -771,7 +764,7 @@ int main()
 					if(sideLength > 16) sideLength -= 4;
 					else if(sideLength > 6) sideLength--;
 				}
-				resizewindow(9*3*sideLength, 2*3*sideLength);
+				resizewindow(9*3*sideLength, 3*3*sideLength);
 				DrawSelection(rp, cp);
 			}
 		}
@@ -785,8 +778,8 @@ int main()
 				else if(keyMsg.key == 'S') rp++;
 				else if(keyMsg.key == 'D') cp++;
 				else if(keyMsg.key == 'E') rp = 0;
-				else if(keyMsg.key == 'H') rp = 1;
-				else if(keyMsg.key == 'M') cp = 7;
+				else if(keyMsg.key == 'N') rp = 1;
+				else if(keyMsg.key == 'H') rp = 2;
 				else if(keyMsg.key == 'C') cp = 8;
 				else if(keyMsg.key == key_left) cp--;
 				else if(keyMsg.key == key_up) rp--;
@@ -794,13 +787,13 @@ int main()
 				else if(keyMsg.key == key_down) rp++;
 				if(rp < 0) rp = 0;
 				if(cp < 4) cp = 4;
-				if(rp > 1) rp = 1;
+				if(rp > 2) rp = 2;
 				if(cp > 8) cp = 8;
 				DrawSelection(rp, cp);
 			}
 			if(keyMsg.msg == key_msg_up)//抬起时确定选择
 			{
-				if(keyMsg.key == '\r' || keyMsg.key == ' ' || keyMsg.key == 'M' || keyMsg.key == 'C')
+				if(keyMsg.key == '\r' || keyMsg.key == ' ' || keyMsg.key == 'C')
 				{
 					summonMode = rp;
 					difficulty = cp-3;
@@ -826,16 +819,17 @@ int main()
 	}
 	else if(difficulty == 4)//大规模L
 	{
-		rowOfPath = LimRow;
-		columnOfPath = LimColumn;
+		rowOfPath = 24;
+		columnOfPath = 44;
 	}
 	else//自定义迷宫规模输入框
 	{
+		const char* difficultyName[3] = {"BFS", "Mix", "DFS"};
 		char title[64];
 		char text[256];
 		char str[64];
 		resizewindow(13*32, 10*32);
-		sprintf(title, "Custom Maze Size Input Box - %cFS", summonMode == 1 ? 'D' : 'B');
+		sprintf(title, "Custom Maze Size Input Box - %s", difficultyName[summonMode]);
 		sprintf(text, "[rowOfPath] [columnOfPath]\n"
 			"Pay attention to the Space and press Enter after inputting. The maximum size is %d * %d.\n"
 			"You can give Feedback about this ugly input box to https://github.com/wysaid/xege", LimRow, LimColumn);
@@ -845,7 +839,6 @@ int main()
 		if(columnOfPath < 1) columnOfPath = 1;
 		if(rowOfPath > LimRow) rowOfPath = LimRow;
 		if(columnOfPath > LimColumn) columnOfPath = LimColumn;
-		if(rowOfPath == 1 && columnOfPath == 1) columnOfPath = 2;
 	}
 	rowOfMaze = 2*rowOfPath+1;
 	columnOfMaze = 2*columnOfPath+1;
@@ -866,7 +859,12 @@ int main()
 			rm = mouseMsg.y / sideLength;
 			cm = mouseMsg.x / sideLength;
 			if(maze[rm][cm] == 1) AdjustCoord(mouseMsg.x, mouseMsg.y, &rm, &cm);
-			if(mouseMsg.is_down()) isMoving = 1;
+			if(mouseMsg.is_down())
+			{
+				MoveBackTo(rm, cm, &rp, &cp);//主路跳转仅在按下时尝试
+				UpdateMainPath(rp, cp);
+				isMoving = 1;
+			}
 			if(mouseMsg.is_up()) isMoving = 0;
 			if(isMoving && (rm != rp || cm != cp))
 			{
@@ -965,6 +963,11 @@ Maze Power 0.5
 Maze Power 0.6
 ——新增 键盘按B沿主路返回上一个岔路口
 ——优化 对于墙格的点击拟合到对应空格的点击
-//——优化 重新称呼现有的可选难度
-//——优化 重构迷宫生成算法
+Maze Power 0.7
+——新增 重新设计难度体系（旧Hard为新Normal(Mix)，旧可选规模以XS,S,M,L称呼，新Hard难度）
+——新增 通过鼠标点击沿主路返回指定位置
+——优化 重构迷宫生成算法
+——优化 迷宫规模上限由24*44提升到240*448
+——优化 迷宫规模下限由1*2下降到1*1
+//——新增 XL规模
 --------------------------------*/
