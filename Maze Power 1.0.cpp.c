@@ -26,13 +26,13 @@ int sideLength = 32;
 void DrawSelection(int rp, int cp)
 {
 	int r, c;
-	const char* sizeName[5] = {"XS", "S", "M", "L", "C"};
+	const char* sizeName[6] = {"XS", "S", "M", "L", "XL", "C"};
 	cleardevice();
 	setfont(sideLength*5/2, 0, "Consolas");
 	setcolor(BLACK);
 	for(r=0; r<3; r++)
 	{
-		for(c=4; c<9; c++)
+		for(c=4; c<10; c++)
 		{
 			setfillcolor((r == rp && c == cp) ? GRAY : LIGHTGRAY);
 			ege_fillrect(c*3*sideLength+sideLength/6, r*3*sideLength+sideLength/6, sideLength*8/3, sideLength*8/3);
@@ -242,7 +242,7 @@ void InitWindow(int mode)
 		else sideLength = 16;
 		setcaption("Maze Power");
 		SetProcessDPIAware();//避免Windows缩放造成模糊
-		initgraph(9*3*sideLength, 3*3*sideLength, INIT_RENDERMANUAL);
+		initgraph(10*3*sideLength, 3*3*sideLength, INIT_RENDERMANUAL);
 		setbkcolor(BLACK);
 		//setfont(sideLength, 0, "Consolas");
 		setbkmode(TRANSPARENT);//默认设置为无背景字体
@@ -750,7 +750,7 @@ int main()
 			if(mouseMsg.is_up())//选择难度
 			{
 				summonMode = (rp == 0 || rp == 2) ? rp : 1;
-				difficulty = (cp >= 4 && cp <= 7) ? cp-3 : 5;
+				difficulty = (cp >= 4 && cp <= 8) ? cp-3 : 6;
 			}
 			if(mouseMsg.is_wheel() && keystate(key_control))//调整显示大小
 			{
@@ -764,7 +764,7 @@ int main()
 					if(sideLength > 16) sideLength -= 4;
 					else if(sideLength > 6) sideLength--;
 				}
-				resizewindow(9*3*sideLength, 3*3*sideLength);
+				resizewindow(10*3*sideLength, 3*3*sideLength);
 				DrawSelection(rp, cp);
 			}
 		}
@@ -780,7 +780,7 @@ int main()
 				else if(keyMsg.key == 'E') rp = 0;
 				else if(keyMsg.key == 'N') rp = 1;
 				else if(keyMsg.key == 'H') rp = 2;
-				else if(keyMsg.key == 'C') cp = 8;
+				else if(keyMsg.key == 'C') cp = 9;
 				else if(keyMsg.key == key_left) cp--;
 				else if(keyMsg.key == key_up) rp--;
 				else if(keyMsg.key == key_right) cp++;
@@ -788,7 +788,7 @@ int main()
 				if(rp < 0) rp = 0;
 				if(cp < 4) cp = 4;
 				if(rp > 2) rp = 2;
-				if(cp > 8) cp = 8;
+				if(cp > 9) cp = 9;
 				DrawSelection(rp, cp);
 			}
 			if(keyMsg.msg == key_msg_up)//抬起时确定选择
@@ -821,6 +821,11 @@ int main()
 	{
 		rowOfPath = 24;
 		columnOfPath = 44;
+	}
+	else if(difficulty == 5)//超大规模XL
+	{
+		rowOfPath = 40;
+		columnOfPath = 72;
 	}
 	else//自定义迷宫规模输入框
 	{
@@ -969,5 +974,6 @@ Maze Power 0.7
 ——优化 重构迷宫生成算法
 ——优化 迷宫规模上限由24*44提升到240*448
 ——优化 迷宫规模下限由1*2下降到1*1
-//——新增 XL规模
+Maze Power 1.0
+——新增 XL规模
 --------------------------------*/
