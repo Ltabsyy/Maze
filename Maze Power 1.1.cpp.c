@@ -60,7 +60,7 @@ void DrawMaze()//绘制迷宫
 			if(maze[r][c] == 1)
 			{
 				for(c1=c; c<columnOfMaze && maze[r][c] == 1; c++);
-				c--;
+				c--;//c==c1时ege_line()不绘制，且未观察到性能影响，无需排除
 				ege_line(c1*sideLength+sideLength/2, r*sideLength+sideLength/2, c*sideLength+sideLength/2, r*sideLength+sideLength/2);
 			}
 		}
@@ -502,7 +502,7 @@ void UpdateMainPath(int rp, int cp)//计算主路
 
 void AdjustCoord(int x, int y, int* pr, int* pc)//墙格尝试基于像素坐标转为对应空格坐标（墙格显示为线条）
 {
-	const static int adjustList[16][4] = {
+	static const int adjustList[16][4] = {
 		{0, 0, 0, 0},//0无连
 		{8, 4, 2, 4},//1单连左，向根部二边和指向一边调整
 		{8, 8, 1, 4},//2单连下
@@ -827,17 +827,16 @@ int main()
 		rowOfPath = 40;
 		columnOfPath = 72;
 	}
-	else//自定义迷宫规模输入框
+	else//自定义
 	{
 		const char* difficultyName[3] = {"BFS", "Mix", "DFS"};
 		char title[64];
 		char text[256];
 		char str[64];
 		resizewindow(13*32, 10*32);
-		sprintf(title, "Custom Maze Size Input Box - %s", difficultyName[summonMode]);
-		sprintf(text, "[rowOfPath] [columnOfPath]\n"
-			"Pay attention to the Space and press Enter after inputting. The maximum size is %d * %d.\n"
-			"You can give Feedback about this ugly input box to https://github.com/wysaid/xege", LimRow, LimColumn);
+		sprintf(title, "自定义迷宫规模输入框 - %s", difficultyName[summonMode]);
+		sprintf(text, "[路径行数] [路径列数]\n注意空格，输入后回车。最大规模%d*%d。\n"
+			"什么？输入框太丑？请到https://github.com/wysaid/xege反馈！", LimRow, LimColumn);
 		inputbox_getline(title, text, str, 64);
 		sscanf(str, "%d%d", &rowOfPath, &columnOfPath);
 		if(rowOfPath < 1) rowOfPath = 1;
@@ -976,4 +975,6 @@ Maze Power 0.7
 ——优化 迷宫规模下限由1*2下降到1*1
 Maze Power 1.0
 ——新增 XL规模
+Maze Power 1.1
+——优化 自定义迷宫规模输入框改为中文
 --------------------------------*/
