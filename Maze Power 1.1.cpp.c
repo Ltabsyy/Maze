@@ -836,7 +836,7 @@ int main()
 		resizewindow(13*32, 10*32);
 		sprintf(title, "自定义迷宫规模输入框 - %s", difficultyName[summonMode]);
 		sprintf(text, "[路径行数] [路径列数]\n注意空格，输入后回车。最大规模%d*%d。\n"
-			"什么？输入框太丑？请到https://github.com/wysaid/xege反馈！", LimRow, LimColumn);
+			"什么？输入框太丑？请到https://github.com/x-ege/xege反馈！", LimRow, LimColumn);
 		inputbox_getline(title, text, str, 64);
 		sscanf(str, "%d%d", &rowOfPath, &columnOfPath);
 		if(rowOfPath < 1) rowOfPath = 1;
