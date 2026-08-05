@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <graphics.h>
+#include <graphics.h>//链接参数-mwindows
+#include <ege/sys_edit.h>
 /**
  * 迷宫 Maze Power
  * 
@@ -251,9 +252,6 @@ void InitWindow(int mode)
 	}
 	else
 	{
-		if(summonMode == 2) setcaption("Maze Power - DFS");
-		else if(summonMode == 1) setcaption("Maze Power - Mix");
-		else setcaption("Maze Power - BFS");
 		while(columnOfMaze*sideLength > screenWidth || rowOfMaze*sideLength > screenHeight*10/11)
 		{
 			if(sideLength > 16) sideLength -= 4;
@@ -802,6 +800,9 @@ int main()
 		}
 		delay_ms(50);
 	}
+	if(summonMode == 2) setcaption("Maze Power - DFS");
+	else if(summonMode == 1) setcaption("Maze Power - Mix");
+	else setcaption("Maze Power - BFS");
 	if(difficulty == 1)//超小规模XS
 	{
 		rowOfPath = 9;
@@ -829,15 +830,31 @@ int main()
 	}
 	else//自定义
 	{
-		const char* difficultyName[3] = {"BFS", "Mix", "DFS"};
-		char title[64];
-		char text[256];
-		char str[64];
-		resizewindow(13*32, 10*32);
-		sprintf(title, "自定义迷宫规模输入框 - %s", difficultyName[summonMode]);
-		sprintf(text, "[路径行数] [路径列数]\n注意空格，输入后回车。最大规模%d*%d。\n"
-			"什么？输入框太丑？请到https://github.com/x-ege/xege反馈！", LimRow, LimColumn);
-		inputbox_getline(title, text, str, 64);
+		char str[16];
+		resizewindow(sideLength*14, sideLength*9);//多一格以显示标题
+		cleardevice();
+		setfont(sideLength, 0, "黑体");
+		xyprintf(sideLength, sideLength*1*5/4-sideLength/4, "自定义迷宫规模输入框");//1.25行间距
+		xyprintf(sideLength, sideLength*2*5/4-sideLength/4, "[路径行数] [路径列数]");
+		xyprintf(sideLength, sideLength*3*5/4-sideLength/4, "注意空格，输入后回车。");
+		xyprintf(sideLength, sideLength*4*5/4-sideLength/4, "最大规模%d*%d。", LimRow, LimColumn);
+		sys_edit edit;
+		edit.create(0);//单行文本框
+		edit.move(sideLength, sideLength*7-8);
+		edit.size(sideLength*8, sideLength+8);
+		//edit.setbgcolor(WHITE);
+		//edit.setcolor(BLACK);
+		edit.setfont(sideLength, 0, "Consolas");
+		edit.setmaxlen(16);
+		edit.visible(1);
+		edit.setfocus();//聚焦，无需点击后输入
+		while(1)
+		{
+			if(kbmsg()) keyMsg = getkey();
+			if(keyMsg.msg == key_msg_up && keyMsg.key == key_enter) break;//会响铃，问题不大(doge)
+			delay_ms(50);
+		}
+		edit.gettext(16, str);
 		sscanf(str, "%d%d", &rowOfPath, &columnOfPath);
 		if(rowOfPath < 1) rowOfPath = 1;
 		if(columnOfPath < 1) columnOfPath = 1;
@@ -977,4 +994,6 @@ Maze Power 1.0
 ——新增 XL规模
 Maze Power 1.1
 ——优化 自定义迷宫规模输入框改为中文
+Maze Power 1.2
+——新增 引入sys_edit文本框
 --------------------------------*/
